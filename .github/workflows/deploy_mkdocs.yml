@@ -1,0 +1,43 @@
+name: Deploy mkdocs site to GitHub Page
+
+# 手動 or mainブランチpush時に発動する
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      -main
+
+# main更新が連続した場合に、選考するワークフローが走っていたらキャンセルする
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout branch
+        uses: actions/checkout@v3 # 履歴情報不要なため深さ0でチェックアウト
+        with: 
+           fetch-depth: 0
+      - name: setup python # mkdocsのためにpython環境を準備
+        uses: actions/setup-python@v3 # mkdocs関連のインストール
+        with: 
+          python-version: '3.8'
+      - name: install dependencies # mkdocs関連のインストール
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs
+          pip install mkdocs-material
+          pip install mkdocs-git-revision-date-plugin
+          pip install mkdocs-git-revision-date-localized-plugin
+          pip install plantuml-markdown
+      - name: mkdocs build # 出力を詳細に/クリーンビルド/警告をエラーにする
+        run: |
+          mkdocs build --verbose --clean --strict
+      - name: mkdocs deploy # デフォルトのトークンを使用してGitHub Pages用途でデプロイ
+        uses: peaceciris/actions-gh-pages@v3
+        with:
+           github_token: ${{ secrets.GITHUB_TOKEN }}
+           publish_dir: site
+         
